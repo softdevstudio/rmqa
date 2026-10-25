@@ -154,7 +154,13 @@ jobs:
           if gh release view "v$v" > out.txt 2>&1; then
             gh release upload "v$v" dist/* --clobber > out.txt 2>&1 || fail "gh release upload failed"
           else
-            gh release create "v$v" dist/* --target "${{ needs.plan.outputs.sha }}" \
+            # Tag first with git, so a refused tag shows git's own reason.
+            git tag "v$v" "${{ needs.plan.outputs.sha }}"
+            git push origin "refs/tags/v$v" > out.txt 2>&1 || fail "git push of tag v$v failed"
+            curl -sS -o /dev/null -D head.txt -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases" || true
+            grep -i '^x-accepted-github-permissions\|^x-oauth-scopes\|^HTTP' head.txt | sed 's/^/::notice::/' || true
+            gh release create "v$v" dist/* --verify-tag \
               --title "rmqa v$v" --notes-file notes.md > out.txt 2>&1 || fail "gh release create failed"
           fi
           cat out.txt
