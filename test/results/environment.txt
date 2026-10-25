@@ -1,5 +1,5 @@
-recorded: 2026-10-25T11:17:04Z
+recorded: 2026-10-25T12:06:45Z
 machine: Linux 6.18.44-fc-v153 x86_64
 cpus: 2
 go: go version go1.24.7 linux/amd64
-version: 0.1.0
+version: 0.1.1
