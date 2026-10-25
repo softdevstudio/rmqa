@@ -36,12 +36,17 @@ content and config values only; never touch the theme).
   can. Scripts and workflows print `::error::` lines for that reason. Read
   the real error before any rerun; at most two fix-and-retry rounds on one
   failure, then stop and report what's known and the options.
+- Don't push to main while a release run is going. GitHub refuses the job's
+  token when it tags a commit that's no longer main's newest one ("refusing
+  to allow a GitHub App to create or update workflow"), so the release
+  must tag main's head. If a push races a release, the next CI run on main
+  releases instead.
 - Finding codes in `check.go` are a public interface: never rename one.
   Add new codes instead, and document them in README.md.
 
 ## State
 
-0.1.0 (2026-10-25): check, init, inspect; text/json/github/markdown output;
+0.1.0 (2026-10-25, released): check, init, inspect; text/json/github/markdown output;
 GitHub Action; 24 broken-release scenarios in the tests; checks the real
 ukue 0.1.0 release in the recorded results.
 
