@@ -1,0 +1,156 @@
+name: Release
+
+# Runs after CI finishes on main. If VERSION names a version that has no tag
+# yet, it builds rmqa for Linux, macOS and Windows, smoke-tests every build,
+# checks the whole release with rmqa itself, and only then tags the commit
+# and publishes. Archive names carry no version, so
+# releases/latest/download links never change.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Rebuild the assets of an existing tag (for example v0.1.0)"
+        required: false
+
+permissions:
+  contents: write
+
+# One release run at a time, so two quick pushes cannot race to publish.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    # Only CI runs started by a push to this repository's main branch, never a
+    # pull request (a fork's branch can also be called main).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      sha: ${{ steps.v.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+      - id: v
+        env:
+          REBUILD_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          v=$(tr -d '[:space:]' < VERSION)
+          sha=$(git rev-parse HEAD)
+          if [ -z "$REBUILD_TAG" ] && git ls-remote --exit-code --tags origin "refs/tags/v$v" >/dev/null; then
+            echo "v$v is already released; nothing to do"
+            v=""
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.version != ''
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { os: ubuntu-latest,    goos: linux,   goarch: amd64, ext: "",     archive: tar.gz, smoke: true }
+          - { os: ubuntu-24.04-arm, goos: linux,   goarch: arm64, ext: "",     archive: tar.gz, smoke: true }
+          - { os: macos-latest,     goos: darwin,  goarch: arm64, ext: "",     archive: tar.gz, smoke: true }
+          - { os: macos-latest,     goos: darwin,  goarch: amd64, ext: "",     archive: tar.gz, smoke: false }
+          - { os: windows-latest,   goos: windows, goarch: amd64, ext: ".exe", archive: zip,    smoke: true }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Build
+        run: |
+          set -eux
+          mkdir -p stage
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -trimpath -ldflags "-s -w" -o stage/rmqa${{ matrix.ext }} ./cmd/rmqa
+          cp LICENSE NOTICE THIRD_PARTY_LICENSES.md README.md CHANGELOG.md stage/
+      - name: Smoke test
+        if: matrix.smoke
+        run: |
+          set -eux
+          out=$(stage/rmqa${{ matrix.ext }} version)
+          [ "$(echo "$out" | tr -d '\r')" = "rmqa ${{ needs.plan.outputs.version }}" ] || { echo "::error::version printed $out"; exit 1; }
+          # A tiny release with a missing file must fail with exit 1, and pass once fixed.
+          mkdir -p smoke/rel
+          echo hello > smoke/rel/notes.txt
+          printf '[[artifact]]\nname = "notes.txt"\n[[artifact]]\nname = "LICENSE"\n' > smoke/m.toml
+          set +e
+          stage/rmqa${{ matrix.ext }} check smoke/rel --manifest smoke/m.toml
+          code=$?
+          set -e
+          [ $code = 1 ] || { echo "::error::expected exit 1 for a missing file, got $code"; exit 1; }
+          cp LICENSE smoke/rel/
+          stage/rmqa${{ matrix.ext }} check smoke/rel --manifest smoke/m.toml
+      - name: Package
+        run: |
+          set -eux
+          mkdir -p dist
+          name=rmqa_${{ matrix.goos }}_${{ matrix.goarch }}
+          if [ "${{ matrix.archive }}" = zip ]; then
+            (cd stage && 7z a -tzip ../dist/$name.zip * >/dev/null)
+          else
+            tar -czf dist/$name.tar.gz -C stage .
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rmqa_${{ matrix.goos }}_${{ matrix.goarch }}
+          path: dist/*
+
+  publish:
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          set -eux
+          cd dist
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+      # rmqa checks its own release: if anything is missing or wrong,
+      # nothing is tagged or published.
+      - name: Check the release with rmqa
+        run: go run ./cmd/rmqa check dist --format github --version "${{ needs.plan.outputs.version }}"
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eux
+          v=${{ needs.plan.outputs.version }}
+          awk "/^## $v/{f=1;next} /^## /{f=0} f" CHANGELOG.md > notes.md
+          if gh release view "v$v" >/dev/null 2>&1; then
+            gh release upload "v$v" dist/* --clobber
+          else
+            gh release create "v$v" dist/* --target "${{ needs.plan.outputs.sha }}" \
+              --title "rmqa v$v" --notes-file notes.md
+          fi

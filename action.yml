@@ -1,0 +1,80 @@
+name: "rmqa release check"
+description: "Check a software release against an rmqa manifest before it is published: every download, the right program per platform, the version, licenses and checksums."
+author: "SoftDevStudio.com"
+branding:
+  icon: "check-square"
+  color: "green"
+
+inputs:
+  dir:
+    description: "Folder with the release files. Ignored when github is set."
+    default: "dist"
+  manifest:
+    description: "Path to the manifest."
+    default: "rmqa.toml"
+  version:
+    description: "Version the release must carry. Empty: the manifest decides."
+    default: ""
+  github:
+    description: "Check a release on GitHub instead of a folder: owner/repo or owner/repo@tag."
+    default: ""
+  strict:
+    description: "Fail on warnings too."
+    default: "false"
+  rmqa-version:
+    description: "rmqa release to use, for example 0.1.0. Empty: the latest."
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Run rmqa
+      shell: bash
+      env:
+        RMQA_DIR: ${{ inputs.dir }}
+        RMQA_MANIFEST: ${{ inputs.manifest }}
+        RMQA_IN_VERSION: ${{ inputs.version }}
+        RMQA_GITHUB: ${{ inputs.github }}
+        RMQA_STRICT: ${{ inputs.strict }}
+        RMQA_USE: ${{ inputs.rmqa-version }}
+        GITHUB_TOKEN: ${{ github.token }}
+        RUNNER_OS_NAME: ${{ runner.os }}
+        RUNNER_ARCH_NAME: ${{ runner.arch }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS_NAME" in
+          Linux) os=linux; ext=tar.gz ;;
+          macOS) os=darwin; ext=tar.gz ;;
+          Windows) os=windows; ext=zip ;;
+          *) echo "::error::rmqa: unsupported runner $RUNNER_OS_NAME"; exit 2 ;;
+        esac
+        case "$RUNNER_ARCH_NAME" in
+          X64) arch=amd64 ;;
+          ARM64) arch=arm64 ;;
+          *) echo "::error::rmqa: unsupported runner architecture $RUNNER_ARCH_NAME"; exit 2 ;;
+        esac
+        if [ -n "$RMQA_USE" ]; then
+          url="https://github.com/softdevstudio/rmqa/releases/download/v${RMQA_USE#v}/rmqa_${os}_${arch}.${ext}"
+        else
+          url="https://github.com/softdevstudio/rmqa/releases/latest/download/rmqa_${os}_${arch}.${ext}"
+        fi
+        tmp="$RUNNER_TEMP/rmqa-bin"
+        mkdir -p "$tmp"
+        curl -sSfL -o "$tmp/rmqa.$ext" "$url"
+        if [ "$ext" = zip ]; then
+          (cd "$tmp" && unzip -oq rmqa.zip)
+          bin="$tmp/rmqa.exe"
+        else
+          tar -xzf "$tmp/rmqa.$ext" -C "$tmp"
+          bin="$tmp/rmqa"
+        fi
+        args=(check --manifest "$RMQA_MANIFEST" --format github)
+        [ -n "$RMQA_IN_VERSION" ] && args+=(--version "$RMQA_IN_VERSION")
+        [ "$RMQA_STRICT" = "true" ] && args+=(--strict)
+        if [ -n "$RMQA_GITHUB" ]; then
+          args+=(--github "$RMQA_GITHUB")
+        else
+          args+=("$RMQA_DIR")
+        fi
+        "$bin" version
+        "$bin" "${args[@]}"

@@ -1,0 +1,35 @@
+# rmqa checks its own releases with this manifest before they are published
+# (see .github/workflows/release.yml).
+project = "rmqa"
+version_file = "VERSION"
+
+[[platform]]
+os = "linux"
+arch = "amd64"
+
+[[platform]]
+os = "linux"
+arch = "arm64"
+
+[[platform]]
+os = "darwin"
+arch = "arm64"
+
+[[platform]]
+os = "darwin"
+arch = "amd64"
+
+[[platform]]
+os = "windows"
+arch = "amd64"
+
+[[artifact]]
+name = "rmqa_{os}_{arch}.{archive}"
+binaries = ["rmqa{exe}"]
+files = ["LICENSE", "NOTICE", "THIRD_PARTY_LICENSES.md", "README.md", "CHANGELOG.md"]
+run = ["version"]
+min_size = 500000
+
+[[artifact]]
+name = "SHA256SUMS"
+checksums = "sha256"

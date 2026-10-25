@@ -1,0 +1,37 @@
+# The manifest for ukue (github.com/ukue-queue/ukue), written by `rmqa init`
+# from its 0.1.0 release, plus run = ["version"]. scripts/record-results.sh
+# checks the live release against it.
+# Check a release with: rmqa check DIR --manifest rmqa.toml
+
+project = "ukue"
+
+[[platform]]
+os = "darwin"
+arch = "amd64"
+
+[[platform]]
+os = "darwin"
+arch = "arm64"
+
+[[platform]]
+os = "linux"
+arch = "amd64"
+
+[[platform]]
+os = "linux"
+arch = "arm64"
+
+[[platform]]
+os = "windows"
+arch = "amd64"
+
+[[artifact]]
+name = "SHA256SUMS"
+checksums = "sha256"
+
+[[artifact]]
+name = "ukue_{os}_{arch}.{archive}"
+binaries = ["ukue{exe}"]
+files = ["LICENSE", "NOTICE", "README.md", "THIRD_PARTY_LICENSES.md"]
+run = ["version"]
+
