@@ -53,6 +53,8 @@ runs:
           ARM64) arch=arm64 ;;
           *) echo "::error::rmqa: unsupported runner architecture $RUNNER_ARCH_NAME"; exit 2 ;;
         esac
+        # There is no Windows ARM64 build; Windows on ARM runs the x86-64 one.
+        [ "$os" = windows ] && arch=amd64
         if [ -n "$RMQA_USE" ]; then
           url="https://github.com/softdevstudio/rmqa/releases/download/v${RMQA_USE#v}/rmqa_${os}_${arch}.${ext}"
         else
@@ -60,7 +62,7 @@ runs:
         fi
         tmp="$RUNNER_TEMP/rmqa-bin"
         mkdir -p "$tmp"
-        curl -sSfL -o "$tmp/rmqa.$ext" "$url"
+        curl -sSfL -o "$tmp/rmqa.$ext" "$url" || { echo "::error::rmqa: could not download $url"; exit 2; }
         if [ "$ext" = zip ]; then
           (cd "$tmp" && unzip -oq rmqa.zip)
           bin="$tmp/rmqa.exe"

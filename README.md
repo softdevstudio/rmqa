@@ -214,6 +214,17 @@ rmqa reads `.tar.gz`, `.tgz`, `.tar.bz2`, `.tar`, `.zip` and `.gz` archives.
 Other files, such as `.deb`, `.msi` or `.dmg`, can be listed in the manifest
 and are checked for presence, size and checksums, but not opened.
 
+rmqa never unpacks to disk. It reads each archive in memory, keeps the
+programs it finds (ELF, Mach-O and PE files, up to 512 MiB of them per
+archive) and only counts the bytes of everything else. An archive that
+unpacks to more than 4 GiB, or holds more than 200,000 entries, is reported
+as `archive-corrupt`, so a small file built to expand into something huge
+can't exhaust the machine running the check.
+
+With `--format github`, a problem that stops the check itself (a broken
+manifest, a missing folder) is printed as an annotation too, and the exit
+status is 2.
+
 ## In GitHub Actions
 
 Check the release files your workflow built, before the step that publishes
@@ -226,7 +237,8 @@ them:
     version: ${{ github.ref_name }}
 ```
 
-The action downloads the rmqa binary for the runner and runs
+The action runs on Linux, macOS and Windows runners (Windows on ARM uses the
+x86-64 build). It downloads the rmqa binary for the runner and runs
 `rmqa check --format github`. Inputs: `dir`, `manifest`, `version`,
 `github`, `strict` and `rmqa-version`.
 

@@ -20,7 +20,7 @@ import (
 
 // Version is the rmqa version. scripts/check-version.sh keeps it equal to
 // the VERSION file.
-const Version = "0.1.0"
+const Version = "0.1.1"
 
 const usage = `rmqa checks a software release before you publish it.
 
@@ -115,7 +115,7 @@ func parse(fs *flag.FlagSet, args []string) ([]string, error) {
 	}
 }
 
-func cmdCheck(args []string, stdout io.Writer) error {
+func cmdCheck(args []string, stdout io.Writer) (err error) {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	manifest := fs.String("manifest", "rmqa.toml", "")
 	version := fs.String("version", "", "")
@@ -135,6 +135,16 @@ func cmdCheck(args []string, stdout io.Writer) error {
 	case "text", "json", "github", "markdown":
 	default:
 		return exitError{2, "--format must be text, json, github or markdown"}
+	}
+	if *format == "github" {
+		// In GitHub Actions only annotations reach the run's summary, so a
+		// problem that stops the check is repeated as one.
+		defer func() {
+			var ee exitError
+			if errors.As(err, &ee) && ee.code == 2 && ee.msg != "" {
+				fmt.Fprintf(stdout, "::error title=rmqa could not check the release::%s\n", strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A").Replace(ee.msg))
+			}
+		}()
 	}
 	m, err := rmqa.LoadManifest(*manifest)
 	if err != nil {
@@ -297,7 +307,7 @@ func cmdInspect(args []string, stdout io.Writer) error {
 				if info, ok := rmqa.Identify(e.Data); ok {
 					what = "  " + info.Format + " " + info.String()
 				}
-				fmt.Fprintf(stdout, "  %-11s %s  %d bytes%s\n", modeString(e), e.Name, len(e.Data), what)
+				fmt.Fprintf(stdout, "  %-11s %s  %d bytes%s\n", modeString(e), e.Name, e.Size, what)
 			}
 			if e.Unsafe != "" {
 				fmt.Fprintf(stdout, "              unsafe: %s\n", e.Unsafe)

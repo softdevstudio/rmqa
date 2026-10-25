@@ -366,7 +366,7 @@ func checkArchive(add adder, e Expected, entries []Entry, version string, opt Op
 			continue
 		}
 		for _, h := range hits {
-			if h.Link == "" && len(h.Data) == 0 {
+			if h.Link == "" && h.Size == 0 {
 				add(e.Name, Finding{Code: CodeEmptyFile, Severity: SevError, Path: h.Name, Message: "is in the archive but empty (0 bytes)"})
 			}
 		}
@@ -513,6 +513,9 @@ func runBinary(data []byte, args []string, exe string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, p, args...)
 	cmd.Dir = dir
 	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + dir, "NO_COLOR=1"}
+	// A program that leaves a child process holding its output open would
+	// otherwise keep CombinedOutput waiting after the timeout.
+	cmd.WaitDelay = 2 * time.Second
 	out, err := cmd.CombinedOutput()
 	if ctx.Err() != nil {
 		return out, fmt.Errorf("it didn't finish within 15 seconds")

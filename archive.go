@@ -20,17 +20,89 @@ type Entry struct {
 	Mode      fs.FileMode
 	ModeKnown bool // false for zip files made on Windows, which store no Unix mode
 	IsDir     bool
-	Link      string // symlink target
-	Data      []byte
-	Unsafe    string // why extracting this entry would write outside the folder
+	Link      string // symlink or hard link target
+	HardLink  bool   // Link is a tar hard link, relative to the archive root
+	Size      int64  // uncompressed size in bytes
+	// Data holds the whole file for programs (ELF, Mach-O and PE files,
+	// recognised by their first bytes) and only the first bytes of anything
+	// else, so a huge file in an archive is counted, not held in memory.
+	Data   []byte
+	Unsafe string // why extracting this entry would write outside the folder
 }
 
 // Limits for reading archives, so a damaged or hostile archive can't
 // exhaust memory.
 var (
-	MaxArchiveBytes int64 = 4 << 30 // total uncompressed bytes per archive
+	MaxArchiveBytes int64 = 4 << 30   // total uncompressed bytes per archive
+	MaxProgramBytes int64 = 512 << 20 // bytes held in memory for programs, per archive
 	MaxEntries            = 200000
 )
+
+// headBytes is how much of a file that isn't a program is kept: enough to
+// tell a script or a damaged program from a real one.
+const headBytes = 4096
+
+// isProgramMagic reports whether b starts like an ELF, Mach-O or PE file.
+func isProgramMagic(b []byte) bool {
+	if len(b) >= 2 && b[0] == 'M' && b[1] == 'Z' {
+		return true
+	}
+	if len(b) < 4 {
+		return false
+	}
+	switch string(b[:4]) {
+	case "\x7fELF", "\xfe\xed\xfa\xce", "\xfe\xed\xfa\xcf", "\xce\xfa\xed\xfe", "\xcf\xfa\xed\xfe", "\xca\xfe\xba\xbe":
+		return true
+	}
+	return false
+}
+
+// entryReader reads entries of one archive, holding programs in memory and
+// only counting everything else.
+type entryReader struct {
+	total, held int64
+}
+
+func (er *entryReader) read(name string, r io.Reader) ([]byte, int64, error) {
+	head := make([]byte, headBytes)
+	n, err := io.ReadFull(r, head)
+	head = head[:n]
+	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		return nil, 0, err
+	}
+	er.total += int64(n)
+	if er.total > MaxArchiveBytes {
+		return nil, 0, fmt.Errorf("expands to more than %d bytes, which rmqa treats as damaged or hostile", MaxArchiveBytes)
+	}
+	if n < headBytes {
+		if isProgramMagic(head) {
+			er.held += int64(n)
+		}
+		return head, int64(n), nil
+	}
+	if isProgramMagic(head) {
+		rest, err := readLimited(r, MaxProgramBytes-er.held-int64(n))
+		if err != nil {
+			return nil, 0, fmt.Errorf("the programs in it add up to more than %d bytes, which rmqa treats as damaged or hostile", MaxProgramBytes)
+		}
+		b := append(head, rest...)
+		er.held += int64(len(b))
+		er.total += int64(len(rest))
+		if er.total > MaxArchiveBytes {
+			return nil, 0, fmt.Errorf("expands to more than %d bytes, which rmqa treats as damaged or hostile", MaxArchiveBytes)
+		}
+		return b, int64(len(b)), nil
+	}
+	m, err := io.Copy(io.Discard, io.LimitReader(r, MaxArchiveBytes-er.total+1))
+	if err != nil {
+		return nil, 0, err
+	}
+	er.total += m
+	if er.total > MaxArchiveBytes {
+		return nil, 0, fmt.Errorf("expands to more than %d bytes, which rmqa treats as damaged or hostile", MaxArchiveBytes)
+	}
+	return head, int64(n) + m, nil
+}
 
 var errNotArchive = errors.New("not an archive")
 
@@ -76,15 +148,20 @@ func OpenArchive(name string, data []byte) ([]Entry, error) {
 		if err != nil {
 			return nil, fmt.Errorf("gzip: %w", err)
 		}
-		b, err := readLimited(zr, MaxArchiveBytes)
+		var er entryReader
+		b, size, err := er.read(name, zr)
 		if err != nil {
 			return nil, err
 		}
 		inner := strings.TrimSuffix(path.Base(name), ".gz")
+		e := Entry{Name: inner, Data: b, Size: size}
+		// The name stored inside the gzip header is what gunzip -N would
+		// write, so it gets the same check as an archive entry.
 		if zr.Name != "" {
-			inner = zr.Name
+			e.Name = zr.Name
+			e.Unsafe = unsafePath(zr.Name, "")
 		}
-		return []Entry{{Name: inner, Data: b}}, nil
+		return []Entry{e}, nil
 	case "unsupported":
 		return nil, fmt.Errorf("rmqa can't open this kind of archive yet (it reads .tar.gz, .tgz, .tar.bz2, .tar, .zip and .gz)")
 	}
@@ -105,7 +182,7 @@ func readLimited(r io.Reader, limit int64) ([]byte, error) {
 func readTar(r io.Reader) ([]Entry, error) {
 	tr := tar.NewReader(r)
 	var out []Entry
-	var total int64
+	var er entryReader
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
@@ -124,20 +201,22 @@ func readTar(r io.Reader) ([]Entry, error) {
 		switch h.Typeflag {
 		case tar.TypeDir:
 			e.IsDir = true
-		case tar.TypeSymlink, tar.TypeLink:
+		case tar.TypeSymlink:
 			e.Link = h.Linkname
+		case tar.TypeLink:
+			e.Link = h.Linkname
+			e.HardLink = true
 		case tar.TypeReg, tar.TypeRegA, tar.TypeGNUSparse:
-			b, err := readLimited(tr, MaxArchiveBytes-total)
+			b, size, err := er.read(h.Name, tr)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", h.Name, err)
 			}
-			total += int64(len(b))
-			e.Data = b
+			e.Data, e.Size = b, size
 		default:
 			// Devices, fifos and the like have no place in a release.
 			e.Unsafe = "it is a special file (device or pipe)"
 		}
-		if u := unsafePath(e.Name, e.Link); u != "" && e.Unsafe == "" {
+		if u := unsafeEntry(e); u != "" && e.Unsafe == "" {
 			e.Unsafe = u
 		}
 		out = append(out, e)
@@ -156,7 +235,7 @@ func readZip(data []byte) ([]Entry, error) {
 		return nil, fmt.Errorf("more than %d entries", MaxEntries)
 	}
 	var out []Entry
-	var total int64
+	var er entryReader
 	for _, f := range zr.File {
 		e := Entry{Name: f.Name, Mode: f.Mode()}
 		// The upper byte of CreatorVersion says which system made the
@@ -180,20 +259,34 @@ func readZip(data []byte) ([]Entry, error) {
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", f.Name, err)
 			}
-			b, err := readLimited(rc, MaxArchiveBytes-total)
+			b, size, err := er.read(f.Name, rc)
 			rc.Close()
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", f.Name, err)
 			}
-			total += int64(len(b))
-			e.Data = b
+			e.Data, e.Size = b, size
 		}
-		if u := unsafePath(e.Name, e.Link); u != "" {
+		if u := unsafeEntry(e); u != "" {
 			e.Unsafe = u
 		}
 		out = append(out, e)
 	}
 	return out, nil
+}
+
+// unsafeEntry is unsafePath for an entry. A tar hard link names its target
+// from the top of the archive, not from the link's own folder.
+func unsafeEntry(e Entry) string {
+	if !e.HardLink {
+		return unsafePath(e.Name, e.Link)
+	}
+	if u := unsafePath(e.Name, ""); u != "" {
+		return u
+	}
+	if u := unsafePath(e.Link, ""); u != "" {
+		return "it is a hard link to a path outside the folder (" + e.Link + ")"
+	}
+	return ""
 }
 
 // unsafePath explains why an entry would land outside the folder it is
@@ -268,6 +361,9 @@ func stripRoot(entries []Entry, root string) ([]Entry, string, error) {
 	found := false
 	for _, e := range entries {
 		n := clean(e.Name)
+		if n == "" || n == "." {
+			continue // the "./" entry of an archive made with tar -C dir .
+		}
 		if n == top && e.IsDir {
 			found = true
 			continue

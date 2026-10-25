@@ -396,7 +396,7 @@ var mutations = []mutation{
 	{"the Windows zip holds the Linux program", "windows_amd64", func(t testing.TB, r *trelease) {
 		r.archive("windows_amd64").file("hello.exe").data = testBinary(t, "linux", "amd64", version)
 	}, []string{CodeWrongOS}, []string{CodeDuplicateBinary}},
-	{"a Unix archive was zipped on Windows, losing permissions", "darwin_arm64", func(t testing.TB, r *trelease) {
+	{"the macOS download was zipped instead of tarred", "darwin_arm64", func(t testing.TB, r *trelease) {
 		a := r.archive("darwin_arm64")
 		a.name = strings.TrimSuffix(a.name, ".tar.gz") + ".zip"
 		a.zip, a.winZip = true, true

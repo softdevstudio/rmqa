@@ -50,6 +50,10 @@ content and config values only; never touch the theme).
 GitHub Action; 24 broken-release scenarios in the tests; checks the real
 ukue 0.1.0 release in the recorded results.
 
+0.1.1 (2026-10-25): fixes from the independent review (streamed archive
+reading, tar hard links, `./` entries, `.gz` names, run timeout, fatal
+errors as annotations, the action on Windows ARM and tested in CI).
+
 ## Gaps and to-do
 
 Known gaps, not planned yet:
