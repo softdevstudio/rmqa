@@ -1,0 +1,29 @@
+$ rmqa check ukue-0.1.0 --manifest examples/ukue.toml --version 0.1.0
+Checking ukue-0.1.0 for ukue 0.1.0
+
+  ok    SHA256SUMS
+  ok    ukue_darwin_amd64.tar.gz  darwin/amd64
+  ok    ukue_darwin_arm64.tar.gz  darwin/arm64
+  ok    ukue_linux_amd64.tar.gz   linux/amd64
+  ok    ukue_linux_arm64.tar.gz   linux/arm64
+  ok    ukue_windows_amd64.zip    windows/amd64
+
+Ready to publish: 0 errors, 0 warnings in 6 files.
+
+$ rmqa check ukue-0.1.0 --manifest examples/ukue.toml --version 0.1.1
+Checking ukue-0.1.0 for ukue 0.1.1
+
+  ok    SHA256SUMS
+  FAIL  ukue_darwin_amd64.tar.gz  darwin/amd64
+          ukue: doesn't contain the version string 0.1.1; it may be an old build [version-missing]
+  FAIL  ukue_darwin_arm64.tar.gz  darwin/arm64
+          ukue: doesn't contain the version string 0.1.1; it may be an old build [version-missing]
+  FAIL  ukue_linux_amd64.tar.gz   linux/amd64
+          ukue: doesn't contain the version string 0.1.1; it may be an old build [version-missing]
+          ukue: running it with "version" printed "ukue 0.1.0 (file format 1)", which doesn't contain 0.1.1 [version-run-mismatch]
+  FAIL  ukue_linux_arm64.tar.gz   linux/arm64
+          ukue: doesn't contain the version string 0.1.1; it may be an old build [version-missing]
+  FAIL  ukue_windows_amd64.zip    windows/amd64
+          ukue.exe: doesn't contain the version string 0.1.1; it may be an old build [version-missing]
+
+Not ready: 6 errors, 0 warnings in 6 files.

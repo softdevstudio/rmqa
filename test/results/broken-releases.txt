@@ -1,0 +1,28 @@
+good release: 0 errors, 0 warnings (must be 0 and 0)
+
+ 1. a platform's download was never uploaded                       caught: missing-artifact
+ 2. the amd64 build was copied into the arm64 archive              caught: duplicate-binary, wrong-arch
+ 3. a Linux build was packed as the macOS download                 caught: duplicate-binary, wrong-os
+ 4. an old build shipped in one archive                            caught: version-missing, version-run-mismatch
+ 5. the license file was left out of the Windows zip               caught: missing-file
+ 6. the license file is empty                                      caught: empty-file
+ 7. an archive was rebuilt after the checksums were made           caught: checksum-mismatch
+ 8. the checksums file misses one download                         caught: checksum-missing-entry
+ 9. the checksums file lists a download that isn't there           caught: checksum-stale-entry
+10. the Linux program lost its executable bit                      caught: no-exec-bit
+11. an upload was cut off halfway                                  caught: archive-corrupt
+12. an archive entry escapes the folder (zip slip)                 caught: unsafe-path
+13. a .env file with secrets was packed                            caught: forbidden-file
+14. a private key was packed                                       caught: forbidden-file
+15. macOS clutter landed in the archive                            caught: junk-file (warning)
+16. a leftover debug build was uploaded too                        caught: extra-file
+17. the program inside one archive is empty                        caught: empty-file
+18. a shell script was packed instead of the program               caught: not-executable
+19. the Windows program is missing its .exe                        caught: missing-binary
+20. the Windows zip holds the Linux program                        caught: duplicate-binary, wrong-os
+21. a Unix archive was zipped on Windows, losing permissions       caught: extra-file, missing-artifact
+22. the archive was named with the version, unlike the manifest    caught: extra-file, missing-artifact
+23. the checksums file was never made                              caught: missing-artifact
+24. a link points outside the archive                              caught: unsafe-path
+
+24 of 24 broken releases caught

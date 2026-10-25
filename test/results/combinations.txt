@@ -1,0 +1,5 @@
+=== RUN   TestCombinedProblems
+    release_test.go:463: combinations: 300 releases with 671 problems in all, every problem reported
+--- PASS: TestCombinedProblems (124.92s)
+PASS
+ok  	github.com/softdevstudio/rmqa	124.938s
