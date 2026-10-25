@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"hash"
 	"os"
@@ -519,6 +520,11 @@ func runBinary(data []byte, args []string, exe string) ([]byte, error) {
 	out, err := cmd.CombinedOutput()
 	if ctx.Err() != nil {
 		return out, fmt.Errorf("it didn't finish within 15 seconds")
+	}
+	// The program itself exited cleanly; only a child it left behind kept
+	// the output open. What it printed is complete, so judge that.
+	if errors.Is(err, exec.ErrWaitDelay) && cmd.ProcessState != nil && cmd.ProcessState.Success() {
+		return out, nil
 	}
 	if err != nil {
 		return out, fmt.Errorf("%v (output: %q)", err, firstLine(out))

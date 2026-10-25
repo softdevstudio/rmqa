@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -123,5 +124,70 @@ func TestGzStoredNameIsChecked(t *testing.T) {
 	}
 	if es[0].Unsafe == "" {
 		t.Error("unsafe stored name not caught")
+	}
+}
+
+// Many small files can't add up in memory: each keeps a short copy that
+// counts against the same budget as programs.
+func TestManySmallFilesAreBounded(t *testing.T) {
+	var es []tarEntry
+	for i := 0; i < 2000; i++ {
+		es = append(es, tarEntry{name: fmt.Sprintf("f%d", i), typ: tar.TypeReg, size: 1, fill: 'x'})
+	}
+	got, err := OpenArchive("x.tar.gz", makeTarGz(t, es))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range got {
+		if cap(e.Data) > keepBytes {
+			t.Fatalf("%s keeps %d bytes of capacity", e.Name, cap(e.Data))
+		}
+	}
+	old := MaxProgramBytes
+	MaxProgramBytes = 1000
+	defer func() { MaxProgramBytes = old }()
+	if _, err := OpenArchive("x.tar.gz", makeTarGz(t, es)); err == nil {
+		t.Fatal("2000 kept heads over a 1000-byte budget should be refused")
+	}
+}
+
+// A cut-off upload is reported as damage, not as a size problem, and a
+// small cut-off file isn't taken as a short good one.
+func TestTruncatedArchives(t *testing.T) {
+	prog := append([]byte("\x7fELF"), bytes.Repeat([]byte{1, 2, 3, 4, 5, 6, 7}, 20000)...)
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(zw)
+	tw.WriteHeader(&tar.Header{Name: "prog", Typeflag: tar.TypeReg, Mode: 0o755, Size: int64(len(prog))})
+	tw.Write(prog)
+	tw.Close()
+	zw.Close()
+	half := buf.Bytes()[:buf.Len()/2]
+	_, err := OpenArchive("x.tar.gz", half)
+	if err == nil || strings.Contains(err.Error(), "add up to") {
+		t.Fatalf("cut-off archive: %v", err)
+	}
+	var small bytes.Buffer
+	gw := gzip.NewWriter(&small)
+	gw.Write(bytes.Repeat([]byte("abcdefghij"), 360))
+	gw.Close()
+	if _, err := OpenArchive("notes.gz", small.Bytes()[:small.Len()-8]); err == nil {
+		t.Fatal("a .gz without its trailer was accepted")
+	}
+}
+
+// A chain of links that each look harmless still leads outside.
+func TestSymlinkChain(t *testing.T) {
+	es, err := OpenArchive("x.tar.gz", makeTarGz(t, []tarEntry{
+		{name: "d/", typ: tar.TypeDir},
+		{name: "d/l", link: "..", typ: tar.TypeSymlink},
+		{name: "d/l/m", link: "..", typ: tar.TypeSymlink},
+		{name: "d/l/m/evil", typ: tar.TypeReg, size: 1, fill: 'x'},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if es[3].Unsafe == "" {
+		t.Error("file under a chain of links not caught")
 	}
 }

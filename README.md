@@ -214,9 +214,10 @@ rmqa reads `.tar.gz`, `.tgz`, `.tar.bz2`, `.tar`, `.zip` and `.gz` archives.
 Other files, such as `.deb`, `.msi` or `.dmg`, can be listed in the manifest
 and are checked for presence, size and checksums, but not opened.
 
-rmqa never unpacks to disk. It reads each archive in memory, keeps the
-programs it finds (ELF, Mach-O and PE files, up to 512 MiB of them per
-archive) and only counts the bytes of everything else. An archive that
+rmqa never unpacks archives to disk; only a program it runs for `run` is
+written to a temporary folder. It reads each archive in memory, keeps the
+programs it finds (ELF, Mach-O and PE files) and the first 512 bytes of
+everything else, up to 512 MiB per archive, and only counts the rest. An archive that
 unpacks to more than 4 GiB, or holds more than 200,000 entries, is reported
 as `archive-corrupt`, so a small file built to expand into something huge
 can't exhaust the machine running the check.

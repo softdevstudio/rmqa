@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.2 (2026-10-25)
+
+Fixes from the second independent review.
+
+- Files that aren't programs keep only their first 512 bytes, counted
+  against the same 512 MiB budget as programs. In 0.1.1 each kept 4 KiB
+  uncounted, so an archive of 150,000 one-byte files took about 680 MB of
+  memory; it now takes about 70 MB (scripts/record-results.sh measures it).
+- A cut-off archive is reported as damaged with the real reason, not as
+  "programs too large", and a cut-off file under 4 KiB is no longer read as
+  a short good one.
+- A file whose path goes through a symlink stored earlier in the archive is
+  `unsafe-path`, so a chain of links that each look harmless can't lead
+  outside the folder.
+- With `--format github`, every problem that stops the check is printed as
+  an annotation, including a wrong number of folders.
+- A program run with `run` that exits but leaves a child process holding
+  its output is judged on what it printed.
+
 ## 0.1.1 (2026-10-25)
 
 Fixes from the independent review of 0.1.0.
@@ -7,7 +26,7 @@ Fixes from the independent review of 0.1.0.
 - Archives are read as a stream: programs are kept in memory (at most
   512 MiB per archive) and everything else is only counted. A 1 MB archive
   that expands to 1 GiB used to take about 2.2 GB of memory; it now takes
-  about 13 MB.
+  about 12 MB.
 - A tar hard link is checked from the top of the archive, as tar resolves
   it, so a hard link to `../etc/passwd` inside a folder is now `unsafe-path`.
 - An archive made with `tar -C dir .` around one top folder no longer fails

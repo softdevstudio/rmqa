@@ -54,6 +54,9 @@ ukue 0.1.0 release in the recorded results.
 reading, tar hard links, `./` entries, `.gz` names, run timeout, fatal
 errors as annotations, the action on Windows ARM and tested in CI).
 
+0.1.2 (2026-10-25): fixes from the second review (bounded memory for many
+small files, truncation errors, symlink chains, annotations, run waits).
+
 ## Gaps and to-do
 
 Known gaps, not planned yet:

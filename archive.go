@@ -38,9 +38,15 @@ var (
 	MaxEntries            = 200000
 )
 
-// headBytes is how much of a file that isn't a program is kept: enough to
-// tell a script or a damaged program from a real one.
-const headBytes = 4096
+// headBytes is how much of each file is read to tell a program from
+// anything else; keepBytes is how much of a file that isn't a program is
+// kept: enough to tell a script from a program.
+const (
+	headBytes = 4096
+	keepBytes = 512
+)
+
+var errLimit = errors.New("limit reached")
 
 // isProgramMagic reports whether b starts like an ELF, Mach-O or PE file.
 func isProgramMagic(b []byte) bool {
@@ -64,32 +70,33 @@ type entryReader struct {
 }
 
 func (er *entryReader) read(name string, r io.Reader) ([]byte, int64, error) {
-	head := make([]byte, headBytes)
-	n, err := io.ReadFull(r, head)
-	head = head[:n]
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+	tooBig := func() error {
+		return fmt.Errorf("expands to more than %d bytes, which rmqa treats as damaged or hostile", MaxArchiveBytes)
+	}
+	// ReadAll returns nil only at a real end of file, so a cut-off
+	// compressed stream is an error here, not a short file.
+	head, err := io.ReadAll(io.LimitReader(r, headBytes))
+	if err != nil {
 		return nil, 0, err
 	}
-	er.total += int64(n)
+	n := int64(len(head))
+	er.total += n
 	if er.total > MaxArchiveBytes {
-		return nil, 0, fmt.Errorf("expands to more than %d bytes, which rmqa treats as damaged or hostile", MaxArchiveBytes)
-	}
-	if n < headBytes {
-		if isProgramMagic(head) {
-			er.held += int64(n)
-		}
-		return head, int64(n), nil
+		return nil, 0, tooBig()
 	}
 	if isProgramMagic(head) {
-		rest, err := readLimited(r, MaxProgramBytes-er.held-int64(n))
-		if err != nil {
+		rest, err := readLimited(r, MaxProgramBytes-er.held-n)
+		if errors.Is(err, errLimit) {
 			return nil, 0, fmt.Errorf("the programs in it add up to more than %d bytes, which rmqa treats as damaged or hostile", MaxProgramBytes)
+		}
+		if err != nil {
+			return nil, 0, err
 		}
 		b := append(head, rest...)
 		er.held += int64(len(b))
 		er.total += int64(len(rest))
 		if er.total > MaxArchiveBytes {
-			return nil, 0, fmt.Errorf("expands to more than %d bytes, which rmqa treats as damaged or hostile", MaxArchiveBytes)
+			return nil, 0, tooBig()
 		}
 		return b, int64(len(b)), nil
 	}
@@ -99,9 +106,16 @@ func (er *entryReader) read(name string, r io.Reader) ([]byte, int64, error) {
 	}
 	er.total += m
 	if er.total > MaxArchiveBytes {
-		return nil, 0, fmt.Errorf("expands to more than %d bytes, which rmqa treats as damaged or hostile", MaxArchiveBytes)
+		return nil, 0, tooBig()
 	}
-	return head, int64(n) + m, nil
+	// Keep a short exact-size copy, counted like program bytes, so many
+	// small files can't add up in memory either.
+	keep := bytes.Clone(head[:min(len(head), keepBytes)])
+	er.held += int64(len(keep))
+	if er.held > MaxProgramBytes {
+		return nil, 0, fmt.Errorf("the files in it add up to more than %d bytes held in memory, which rmqa treats as damaged or hostile", MaxProgramBytes)
+	}
+	return keep, n + m, nil
 }
 
 var errNotArchive = errors.New("not an archive")
@@ -174,7 +188,7 @@ func readLimited(r io.Reader, limit int64) ([]byte, error) {
 		return nil, err
 	}
 	if int64(len(b)) > limit {
-		return nil, fmt.Errorf("expands to more than %d bytes, which rmqa treats as damaged or hostile", limit)
+		return nil, fmt.Errorf("expands to more than %d bytes, which rmqa treats as damaged or hostile: %w", limit, errLimit)
 	}
 	return b, nil
 }
@@ -189,6 +203,7 @@ func readTar(r io.Reader) ([]Entry, error) {
 			if len(out) == 0 {
 				return nil, fmt.Errorf("the archive is empty")
 			}
+			markThroughLinks(out)
 			return out, nil
 		}
 		if err != nil {
@@ -271,7 +286,31 @@ func readZip(data []byte) ([]Entry, error) {
 		}
 		out = append(out, e)
 	}
+	markThroughLinks(out)
 	return out, nil
+}
+
+// markThroughLinks flags entries whose folder path goes through a symlink
+// stored earlier in the same archive. Unpacking follows that link, so a
+// chain such as d/l -> .. and then d/l/m -> .. puts later files outside the
+// folder even though each name looks harmless on its own.
+func markThroughLinks(entries []Entry) {
+	links := map[string]bool{}
+	for i := range entries {
+		e := &entries[i]
+		n := strings.TrimSuffix(strings.TrimPrefix(strings.ReplaceAll(e.Name, `\`, "/"), "./"), "/")
+		if e.Unsafe == "" {
+			for dir := path.Dir(n); dir != "." && dir != "/" && dir != ""; dir = path.Dir(dir) {
+				if links[dir] {
+					e.Unsafe = "its path goes through the link " + dir + ", so it would be written wherever that link points"
+					break
+				}
+			}
+		}
+		if e.Link != "" && !e.HardLink {
+			links[n] = true
+		}
+	}
 }
 
 // unsafeEntry is unsafePath for an entry. A tar hard link names its target

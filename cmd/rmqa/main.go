@@ -20,7 +20,7 @@ import (
 
 // Version is the rmqa version. scripts/check-version.sh keeps it equal to
 // the VERSION file.
-const Version = "0.1.1"
+const Version = "0.1.2"
 
 const usage = `rmqa checks a software release before you publish it.
 
@@ -128,14 +128,6 @@ func cmdCheck(args []string, stdout io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	if len(pos) > 1 {
-		return exitError{2, "check takes one folder"}
-	}
-	switch *format {
-	case "text", "json", "github", "markdown":
-	default:
-		return exitError{2, "--format must be text, json, github or markdown"}
-	}
 	if *format == "github" {
 		// In GitHub Actions only annotations reach the run's summary, so a
 		// problem that stops the check is repeated as one.
@@ -145,6 +137,14 @@ func cmdCheck(args []string, stdout io.Writer) (err error) {
 				fmt.Fprintf(stdout, "::error title=rmqa could not check the release::%s\n", strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A").Replace(ee.msg))
 			}
 		}()
+	}
+	if len(pos) > 1 {
+		return exitError{2, "check takes one folder"}
+	}
+	switch *format {
+	case "text", "json", "github", "markdown":
+	default:
+		return exitError{2, "--format must be text, json, github or markdown"}
 	}
 	m, err := rmqa.LoadManifest(*manifest)
 	if err != nil {
