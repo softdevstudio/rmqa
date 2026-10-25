@@ -232,7 +232,7 @@ Check the release files your workflow built, before the step that publishes
 them:
 
 ```yaml
-- uses: softdevstudio/rmqa@v0.1.1
+- uses: softdevstudio/rmqa@v0.1.2
   with:
     dir: dist
     version: ${{ github.ref_name }}
