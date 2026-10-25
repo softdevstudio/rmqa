@@ -17,11 +17,13 @@ fuzztime="${FUZZTIME:-60s}"
 } > "$res/environment.txt"
 
 echo "== tests"
-export RMQA_ITERATIONS="${RMQA_ITERATIONS:-300}"
 go test -count=1 -race -v -timeout 60m ./... 2>&1 | tee "$res/tests.txt" | grep -E "^(--- |ok|FAIL)" || true
 grep -qE "^(--- FAIL|FAIL)" "$res/tests.txt" && { echo "::error::tests failed"; exit 1; }
-grep -h "combinations" "$res/tests.txt" || true
 echo "tests passed: $(grep -c '^--- PASS' "$res/tests.txt") top-level and sub-tests"
+
+echo "== random combinations of problems"
+RMQA_ITERATIONS="${RMQA_ITERATIONS:-300}" go test -count=1 -v -run '^TestCombinedProblems$' . 2>&1 | tee "$res/combinations.txt" | grep -E "combinations:|^(--- |ok|FAIL)"
+grep -qE "^(--- FAIL|FAIL)" "$res/combinations.txt" && { echo "::error::a combination of problems was not fully reported"; exit 1; }
 
 echo "== broken releases"
 RMQA_RECORD_DIR="$res" go test -count=1 -run TestRecordScenarios . >/dev/null

@@ -341,7 +341,7 @@ var mutations = []mutation{
 	{"the license file is empty", "darwin_arm64", func(t testing.TB, r *trelease) {
 		r.archive("darwin_arm64").file("LICENSE").data = nil
 	}, []string{CodeEmptyFile}, nil},
-	{"an archive was rebuilt after the checksums were made", "linux_arm64", func(t testing.TB, r *trelease) {
+	{"an archive was rebuilt after the checksums were made", "sums", func(t testing.TB, r *trelease) {
 		a := r.archive("linux_arm64")
 		r.after = chain(r.after, func(dir string) {
 			a.files = append(a.files, tfile{name: "CHANGELOG.md", mode: 0o644, data: []byte("late fix\n")})
@@ -447,7 +447,7 @@ func TestEveryBrokenReleaseIsCaught(t *testing.T) {
 func TestCombinedProblems(t *testing.T) {
 	rng := rand.New(rand.NewSource(20261025))
 	// 60 by default keeps CI quick under -race; scripts/record-results.sh
-	// sets RMQA_ITERATIONS=300 for the published run.
+	// runs 300 without -race for the published run.
 	iterations := 60
 	if n, err := strconv.Atoi(os.Getenv("RMQA_ITERATIONS")); err == nil && n > 0 {
 		iterations = n
