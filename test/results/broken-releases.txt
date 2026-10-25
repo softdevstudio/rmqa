@@ -20,7 +20,7 @@ good release: 0 errors, 0 warnings (must be 0 and 0)
 18. a shell script was packed instead of the program               caught: not-executable
 19. the Windows program is missing its .exe                        caught: missing-binary
 20. the Windows zip holds the Linux program                        caught: duplicate-binary, wrong-os
-21. a Unix archive was zipped on Windows, losing permissions       caught: extra-file, missing-artifact
+21. the macOS download was zipped instead of tarred                caught: extra-file, missing-artifact
 22. the archive was named with the version, unlike the manifest    caught: extra-file, missing-artifact
 23. the checksums file was never made                              caught: missing-artifact
 24. a link points outside the archive                              caught: unsafe-path

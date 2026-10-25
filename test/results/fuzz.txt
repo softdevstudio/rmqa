@@ -1,8 +1,8 @@
 --- FuzzTOML
-fuzz: elapsed: 1m0s, execs: 9655 (0/sec), new interesting: 2 (total: 176)
-fuzz: elapsed: 1m1s, execs: 9655 (0/sec), new interesting: 2 (total: 176)
+fuzz: elapsed: 1m0s, execs: 23597 (0/sec), new interesting: 6 (total: 182)
+fuzz: elapsed: 1m1s, execs: 23597 (0/sec), new interesting: 6 (total: 182)
 PASS
 --- FuzzOpenArchive
-fuzz: elapsed: 1m0s, execs: 700608 (0/sec), new interesting: 122 (total: 215)
-fuzz: elapsed: 1m1s, execs: 700608 (0/sec), new interesting: 122 (total: 215)
+fuzz: elapsed: 1m0s, execs: 419166 (4821/sec), new interesting: 37 (total: 252)
+fuzz: elapsed: 1m1s, execs: 419166 (0/sec), new interesting: 37 (total: 252)
 PASS

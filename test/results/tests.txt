@@ -1,15 +1,21 @@
 === RUN   TestLargeFileIsNotHeld
---- PASS: TestLargeFileIsNotHeld (6.12s)
+--- PASS: TestLargeFileIsNotHeld (6.11s)
 === RUN   TestProgramBytesAreCapped
---- PASS: TestProgramBytesAreCapped (1.67s)
+--- PASS: TestProgramBytesAreCapped (1.80s)
 === RUN   TestHardLinkOutside
 --- PASS: TestHardLinkOutside (0.00s)
 === RUN   TestDotEntryWithTopFolder
 --- PASS: TestDotEntryWithTopFolder (0.01s)
 === RUN   TestGzStoredNameIsChecked
 --- PASS: TestGzStoredNameIsChecked (0.00s)
+=== RUN   TestManySmallFilesAreBounded
+--- PASS: TestManySmallFilesAreBounded (12.63s)
+=== RUN   TestTruncatedArchives
+--- PASS: TestTruncatedArchives (0.02s)
+=== RUN   TestSymlinkChain
+--- PASS: TestSymlinkChain (0.01s)
 === RUN   TestGoodReleasePasses
---- PASS: TestGoodReleasePasses (6.43s)
+--- PASS: TestGoodReleasePasses (6.21s)
 === RUN   TestEveryBrokenReleaseIsCaught
 === RUN   TestEveryBrokenReleaseIsCaught/a_platform's_download_was_never_uploaded
 === RUN   TestEveryBrokenReleaseIsCaught/the_amd64_build_was_copied_into_the_arm64_archive
@@ -35,44 +41,44 @@
 === RUN   TestEveryBrokenReleaseIsCaught/the_archive_was_named_with_the_version,_unlike_the_manifest
 === RUN   TestEveryBrokenReleaseIsCaught/the_checksums_file_was_never_made
 === RUN   TestEveryBrokenReleaseIsCaught/a_link_points_outside_the_archive
---- PASS: TestEveryBrokenReleaseIsCaught (129.18s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/a_platform's_download_was_never_uploaded (4.12s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_amd64_build_was_copied_into_the_arm64_archive (5.40s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/a_Linux_build_was_packed_as_the_macOS_download (5.31s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/an_old_build_shipped_in_one_archive (5.81s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_license_file_was_left_out_of_the_Windows_zip (5.58s)
+--- PASS: TestEveryBrokenReleaseIsCaught (130.62s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/a_platform's_download_was_never_uploaded (4.38s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_amd64_build_was_copied_into_the_arm64_archive (6.02s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/a_Linux_build_was_packed_as_the_macOS_download (5.64s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/an_old_build_shipped_in_one_archive (5.87s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_license_file_was_left_out_of_the_Windows_zip (5.48s)
     --- PASS: TestEveryBrokenReleaseIsCaught/the_license_file_is_empty (5.43s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/an_archive_was_rebuilt_after_the_checksums_were_made (6.12s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_checksums_file_misses_one_download (5.51s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_checksums_file_lists_a_download_that_isn't_there (5.40s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_Linux_program_lost_its_executable_bit (5.65s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/an_upload_was_cut_off_halfway (5.46s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/an_archive_entry_escapes_the_folder_(zip_slip) (5.76s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/a_.env_file_with_secrets_was_packed (5.63s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/a_private_key_was_packed (5.64s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/macOS_clutter_landed_in_the_archive (5.87s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/a_leftover_debug_build_was_uploaded_too (5.49s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_program_inside_one_archive_is_empty (4.34s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/a_shell_script_was_packed_instead_of_the_program (4.95s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_Windows_program_is_missing_its_.exe (5.52s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_Windows_zip_holds_the_Linux_program (5.23s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_macOS_download_was_zipped_instead_of_tarred (4.87s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_archive_was_named_with_the_version,_unlike_the_manifest (5.24s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/the_checksums_file_was_never_made (5.39s)
-    --- PASS: TestEveryBrokenReleaseIsCaught/a_link_points_outside_the_archive (5.44s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/an_archive_was_rebuilt_after_the_checksums_were_made (6.49s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_checksums_file_misses_one_download (5.34s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_checksums_file_lists_a_download_that_isn't_there (5.43s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_Linux_program_lost_its_executable_bit (5.47s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/an_upload_was_cut_off_halfway (5.39s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/an_archive_entry_escapes_the_folder_(zip_slip) (5.27s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/a_.env_file_with_secrets_was_packed (5.70s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/a_private_key_was_packed (5.63s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/macOS_clutter_landed_in_the_archive (5.35s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/a_leftover_debug_build_was_uploaded_too (5.62s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_program_inside_one_archive_is_empty (4.24s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/a_shell_script_was_packed_instead_of_the_program (4.40s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_Windows_program_is_missing_its_.exe (5.72s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_Windows_zip_holds_the_Linux_program (5.64s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_macOS_download_was_zipped_instead_of_tarred (5.44s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_archive_was_named_with_the_version,_unlike_the_manifest (5.60s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/the_checksums_file_was_never_made (5.42s)
+    --- PASS: TestEveryBrokenReleaseIsCaught/a_link_points_outside_the_archive (5.65s)
 === RUN   TestCombinedProblems
     release_test.go:463: combinations: 60 releases with 137 problems in all, every problem reported
---- PASS: TestCombinedProblems (319.04s)
+--- PASS: TestCombinedProblems (327.41s)
 === RUN   TestZipWithoutUnixModesWarns
---- PASS: TestZipWithoutUnixModesWarns (5.30s)
+--- PASS: TestZipWithoutUnixModesWarns (5.57s)
 === RUN   TestWrappedFolderAndRoot
---- PASS: TestWrappedFolderAndRoot (16.80s)
+--- PASS: TestWrappedFolderAndRoot (16.54s)
 === RUN   TestRawBinaryArtifacts
 --- PASS: TestRawBinaryArtifacts (0.05s)
 === RUN   TestInitRoundTrip
---- PASS: TestInitRoundTrip (130.42s)
+--- PASS: TestInitRoundTrip (140.78s)
 === RUN   TestInitOtherSpellings
---- PASS: TestInitOtherSpellings (6.83s)
+--- PASS: TestInitOtherSpellings (7.12s)
 === RUN   TestRecordScenarios
     release_test.go:669: set RMQA_RECORD_DIR to record
 --- SKIP: TestRecordScenarios (0.00s)
@@ -93,15 +99,15 @@
 === RUN   TestUnsafePath
 --- PASS: TestUnsafePath (0.00s)
 === RUN   TestZipBombIsRefused
---- PASS: TestZipBombIsRefused (6.04s)
+--- PASS: TestZipBombIsRefused (5.92s)
 === RUN   TestIdentifyRejectsNonPrograms
 --- PASS: TestIdentifyRejectsNonPrograms (0.00s)
 === RUN   TestIdentifyRealPrograms
---- PASS: TestIdentifyRealPrograms (0.45s)
+--- PASS: TestIdentifyRealPrograms (0.52s)
 === RUN   TestGitHubFetch
---- PASS: TestGitHubFetch (6.56s)
+--- PASS: TestGitHubFetch (7.25s)
 === RUN   TestReportFormats
---- PASS: TestReportFormats (5.55s)
+--- PASS: TestReportFormats (5.94s)
 === RUN   FuzzTOML
 === RUN   FuzzTOML/seed#0
 === RUN   FuzzTOML/seed#1
@@ -114,21 +120,21 @@
 === RUN   FuzzOpenArchive/seed#0
 === RUN   FuzzOpenArchive/seed#1
 === RUN   FuzzOpenArchive/seed#2
---- PASS: FuzzOpenArchive (0.01s)
+--- PASS: FuzzOpenArchive (0.00s)
     --- PASS: FuzzOpenArchive/seed#0 (0.00s)
     --- PASS: FuzzOpenArchive/seed#1 (0.00s)
     --- PASS: FuzzOpenArchive/seed#2 (0.00s)
 PASS
-ok  	github.com/softdevstudio/rmqa	641.503s
+ok  	github.com/softdevstudio/rmqa	675.553s
 === RUN   TestCheckPasses
---- PASS: TestCheckPasses (1.84s)
+--- PASS: TestCheckPasses (1.80s)
 === RUN   TestCheckWrongVersionRuns
---- PASS: TestCheckWrongVersionRuns (2.40s)
+--- PASS: TestCheckWrongVersionRuns (2.30s)
 === RUN   TestCheckJSONAndStrict
---- PASS: TestCheckJSONAndStrict (1.81s)
+--- PASS: TestCheckJSONAndStrict (1.87s)
 === RUN   TestUsageErrors
 --- PASS: TestUsageErrors (0.00s)
 === RUN   TestInitAndInspect
---- PASS: TestInitAndInspect (3.75s)
+--- PASS: TestInitAndInspect (3.61s)
 PASS
-ok  	github.com/softdevstudio/rmqa/cmd/rmqa	10.811s
+ok  	github.com/softdevstudio/rmqa/cmd/rmqa	10.612s

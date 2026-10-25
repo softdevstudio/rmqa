@@ -2,6 +2,6 @@
   "release": "ukue 0.1.0, 5 archives and SHA256SUMS",
   "download_bytes": 18815342,
   "runs": 7,
-  "median_seconds": 0.855,
-  "fastest_seconds": 0.807
+  "median_seconds": 0.994,
+  "fastest_seconds": 0.908
 }

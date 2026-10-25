@@ -1,0 +1,2 @@
+one file of 1 GiB of zeros: archive 1043729 bytes, rmqa inspect peak memory 12 MB
+150,000 files of 1 byte: archive 1261344 bytes, rmqa inspect peak memory 60 MB
