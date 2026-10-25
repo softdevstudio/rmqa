@@ -145,12 +145,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -eux
+          set -u
           v=${{ needs.plan.outputs.version }}
           awk "/^## $v/{f=1;next} /^## /{f=0} f" CHANGELOG.md > notes.md
-          if gh release view "v$v" >/dev/null 2>&1; then
-            gh release upload "v$v" dist/* --clobber
+          # Job logs can't be read from the maintainer's sessions, so any
+          # failure is repeated as annotations.
+          fail() { echo "::error::$1"; sed 's/^/::error::/' out.txt | head -20; exit 1; }
+          if gh release view "v$v" > out.txt 2>&1; then
+            gh release upload "v$v" dist/* --clobber > out.txt 2>&1 || fail "gh release upload failed"
           else
             gh release create "v$v" dist/* --target "${{ needs.plan.outputs.sha }}" \
-              --title "rmqa v$v" --notes-file notes.md
+              --title "rmqa v$v" --notes-file notes.md > out.txt 2>&1 || fail "gh release create failed"
           fi
+          cat out.txt
